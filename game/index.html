@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vistamar — Open-world crime in the city of Vistamar</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0e1420; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hud { position: fixed; color: #f2f0e6; text-shadow: 0 1px 3px rgba(0,0,0,.8); user-select: none; pointer-events: none; z-index: 5; }
+  #topleft { top: 14px; left: 16px; }
+  #healthbar { width: 220px; height: 14px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); border-radius: 3px; overflow: hidden; }
+  #healthfill { height: 100%; width: 100%; background: linear-gradient(90deg, #3fae5a, #7ed491); }
+  #money { margin-top: 6px; font-size: 22px; font-weight: 700; color: #e8b93a; }
+  #weapon { margin-top: 2px; font-size: 13px; color: #cfd6de; }
+  #topright { top: 14px; right: 16px; text-align: right; }
+  #stars { font-size: 26px; letter-spacing: 2px; color: #e8b93a; }
+  #stars .off { color: rgba(255,255,255,.25); }
+  #clock { font-size: 15px; color: #cfd6de; margin-top: 2px; }
+  #mission { left: 50%; transform: translateX(-50%); top: 14px; text-align: center; max-width: 560px; }
+  #missiontitle { font-size: 15px; font-weight: 700; color: #ff9f1c; }
+  #missionobj { font-size: 14px; margin-top: 2px; }
+  #missiondist { font-size: 13px; color: #9fd6ff; margin-top: 2px; }
+  #minimapwrap { left: 16px; bottom: 16px; }
+  #minimap { display: block; background: rgba(10,16,26,.72); border: 1px solid rgba(255,255,255,.35); border-radius: 4px; }
+  #hint { right: 16px; bottom: 16px; text-align: right; font-size: 12px; line-height: 1.6; color: #cfd6de; }
+  #banner { left: 50%; top: 34%; transform: translate(-50%, -50%); font-size: 34px; font-weight: 800; color: #e8b93a; text-align: center; display: none; }
+  #banner small { display: block; font-size: 16px; color: #f2f0e6; font-weight: 400; margin-top: 6px; }
+  #crosshair { left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 20px; color: #fff; display: none; }
+  #toast { left: 50%; bottom: 120px; transform: translateX(-50%); font-size: 15px; color: #9fd6ff; display: none; }
+  .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(8,18,38,.82), rgba(8,18,38,.55) 45%, rgba(8,18,38,.85)); color: #f2f0e6; z-index: 10; text-align: center; }
+  .overlay h1 { margin: 0; font-size: 72px; letter-spacing: 10px; font-weight: 900; color: #e8b93a; text-shadow: 0 4px 24px rgba(0,0,0,.7); }
+  .overlay h2 { margin: 6px 0 0; font-size: 20px; font-weight: 400; color: #9fd6ff; letter-spacing: 4px; }
+  .overlay p { max-width: 620px; line-height: 1.7; font-size: 15px; color: #dfe5ec; }
+  .overlay .keys { font-size: 13px; color: #b9c2cc; line-height: 1.9; }
+  .overlay .go { margin-top: 18px; font-size: 18px; font-weight: 700; color: #101318; background: #e8b93a; padding: 10px 26px; border-radius: 4px; }
+  #shop { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(10,16,26,.94); border: 1px solid #e8b93a; border-radius: 6px; padding: 18px 22px; color: #f2f0e6; z-index: 12; display: none; min-width: 320px; pointer-events: auto; }
+  #shop h3 { margin: 0 0 4px; color: #e8b93a; }
+  #shop p { margin: 0 0 12px; font-size: 13px; color: #b9c2cc; }
+  #shop button { display: block; width: 100%; margin: 6px 0; padding: 9px 10px; font-size: 14px; background: #1d2a3d; color: #f2f0e6; border: 1px solid #3a4a61; border-radius: 4px; cursor: pointer; text-align: left; }
+  #shop button:hover { background: #2a3d57; border-color: #e8b93a; }
+  #shop button:disabled { opacity: .45; cursor: default; }
+  #shop .close { margin-top: 10px; font-size: 12px; color: #9fb0c0; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Vistamar: an open-world crime game. Walk and drive around the city of Vistamar, take jobs from Mara Solis, and stay out of the hands of the police"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div class="hud" id="topleft">
+  <div id="healthbar"><div id="healthfill"></div></div>
+  <div id="money">$120</div>
+  <div id="weapon">Fists</div>
+</div>
+<div class="hud" id="topright">
+  <div id="stars"></div>
+  <div id="clock">09:00</div>
+</div>
+<div class="hud" id="mission">
+  <div id="missiontitle"></div>
+  <div id="missionobj"></div>
+  <div id="missiondist"></div>
+</div>
+<div class="hud" id="minimapwrap"><canvas id="minimap" width="220" height="160"></canvas></div>
+<div class="hud" id="hint">WASD move / drive &nbsp;·&nbsp; Shift run<br>E enter / exit car &nbsp;·&nbsp; Click punch / shoot<br>1 fists &nbsp; 2 pistol &nbsp;·&nbsp; Esc pause &nbsp;·&nbsp; drag mouse to look</div>
+<div class="hud" id="banner"></div>
+<div class="hud" id="crosshair">+</div>
+<div class="hud" id="toast"></div>
+
+<div class="overlay" id="title">
+  <h1>VISTAMAR</h1>
+  <h2>SUN &middot; SEA &middot; SIRENS</h2>
+  <p>Dante Reyes is back in Vistamar, a sun-soaked coastal city of towers, beaches and bad decisions.
+  Fixer Mara Solis has eight jobs for him — if the Vistamar PD lets him finish them. Walk the streets,
+  steal a car, lose the heat, and get paid.</p>
+  <p class="keys">WASD — move / drive &nbsp;·&nbsp; SHIFT — run &nbsp;·&nbsp; E — enter / exit car, use shops<br>
+  Mouse click — punch / shoot &nbsp;·&nbsp; 1 / 2 — fists / pistol &nbsp;·&nbsp; ESC — pause<br>
+  Drag mouse — look around &nbsp;·&nbsp; Progress saves automatically</p>
+  <div class="go" id="titlego">PRESS ENTER TO PLAY</div>
+  <p class="keys" id="titlesave"></p>
+</div>
+
+<div class="overlay" id="pause" style="display:none">
+  <h1 style="font-size:44px">PAUSED</h1>
+  <p>Vistamar waits for no one — except right now.</p>
+  <div class="go">PRESS ESC TO RESUME</div>
+  <p class="keys">R — restart from the beginning &nbsp;·&nbsp; Your progress is saved automatically</p>
+</div>
+
+<div class="overlay" id="end" style="display:none">
+  <h1 style="font-size:44px" id="endtitle">BUSTED</h1>
+  <p id="endtext"></p>
+  <div class="go">PRESS ENTER TO TRY AGAIN</div>
+</div>
+
+<div id="shop">
+  <h3 id="shopname"></h3>
+  <p id="shopdesc"></p>
+  <div id="shopitems"></div>
+  <div class="close">Press E or Esc to close</div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
